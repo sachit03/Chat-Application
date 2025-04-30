@@ -1,0 +1,511 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Group Chat</title>
+  <style>
+    #chatContainer {
+      border: 1px solid #ddd;
+      padding: 10px;
+      max-width: 600px;
+      margin: 20px auto;
+    }
+    #messages {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 5px;
+      display: flex;
+      flex-direction: column;
+    }
+    .message {
+      margin: 5px;
+      padding: 8px;
+      border-radius: 5px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+    .me { align-self: flex-end; background-color: #dcf8c6; text-align: right; }
+    .them { align-self: flex-start; background-color: #fff; text-align: left; }
+    #messageInput { width: calc(100% - 60px); padding: 8px; }
+    #sendBtn      { width: 50px; padding: 8px; }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center;">Group Chat</h2>
+  <div id="chatContainer">
+    <div id="messages"></div>
+    <div style="display:flex; margin-top:10px;">
+      <input id="messageInput" type="text" placeholder="Type your message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io({ auth: { token: localStorage.getItem("authToken") } });
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const params = new URLSearchParams(window.location.search);
+    const groupId = params.get("groupId");
+    
+    function renderMessage(sender, text) {
+      const div = document.createElement("div");
+      const isMe = sender.id === currentUser.id;
+      div.classList.add("message", isMe ? "me" : "them");
+      div.innerHTML = `<strong>${isMe ? "You" : sender.name}:</strong> ${text}`;
+      document.getElementById("messages").appendChild(div);
+      document.getElementById("messages").scrollTop =
+        document.getElementById("messages").scrollHeight;
+    }
+
+    
+    async function loadHistory() {
+      const res = await fetch(`/api/groups/${groupId}/history`, {
+        headers: { "Authorization": "Bearer " + localStorage.getItem("authToken") }
+      });
+      if (!res.ok) return console.error("History fetch failed:", await res.text());
+      const msgs = await res.json();
+      msgs.forEach(m => renderMessage(m.sender, m.message));
+    }
+
+    
+    socket.emit("joinGroup", groupId);
+    loadHistory();
+    document.getElementById("sendBtn").onclick = () => {
+      const text = document.getElementById("messageInput").value.trim();
+      if (!text) return;
+      const data = { groupId, senderId: currentUser.id, message: text };
+      socket.emit("sendGroupMessage", data);
+      document.getElementById("messageInput").value = "";
+    };
+
+    socket.on("receiveGroupMessage", data => {
+      renderMessage({ id: data.senderId, name: data.senderName || "Member" }, data.message);
+    });
+  </script>
+</body>
+</html> -->
+
+<!-- <!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Group Chat</title>
+  <style>
+    #chatContainer {
+      border: 1px solid #ddd;
+      padding: 10px;
+      max-width: 600px;
+      margin: 20px auto;
+      position: relative;
+    }
+    #messages {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 5px;
+      display: flex;
+      flex-direction: column;
+    }
+    .message {
+      margin: 5px;
+      padding: 8px;
+      border-radius: 5px;
+      max-width: 80%;
+      word-wrap: break-word;
+    }
+    .me { align-self: flex-end; background-color: #dcf8c6; text-align: right; }
+    .them { align-self: flex-start; background-color: #fff; text-align: left; }
+    #messageInput { width: calc(100% - 60px); padding: 8px; }
+    #sendBtn      { width: 50px; padding: 8px; }
+    #leaveGroupBtn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      padding: 5px 10px;
+      background-color: #ff4d4d;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center;">Group Chat</h2>
+
+  <div id="chatContainer">
+    <button id="leaveGroupBtn">Leave Group</button>
+    <div id="messages"></div>
+    <div style="display:flex; margin-top:10px;">
+      <input id="messageInput" type="text" placeholder="Type your message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io({ auth: { token: localStorage.getItem("authToken") } });
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const params = new URLSearchParams(window.location.search);
+    const groupId = params.get("groupId");
+    const token = localStorage.getItem("authToken");
+
+    function renderMessage(sender, text) {
+      const div = document.createElement("div");
+      const isMe = sender.id === currentUser.id;
+      div.classList.add("message", isMe ? "me" : "them");
+      div.innerHTML = `<strong>${isMe ? "You" : sender.name}:</strong> ${text}`;
+      document.getElementById("messages").appendChild(div);
+      document.getElementById("messages").scrollTop =
+        document.getElementById("messages").scrollHeight;
+    }
+
+    function renderSystemMessage(text) {
+      const div = document.createElement("div");
+      div.classList.add("message", "them");
+      div.innerHTML = `<em>${text}</em>`;
+      document.getElementById("messages").appendChild(div);
+      document.getElementById("messages").scrollTop =
+        document.getElementById("messages").scrollHeight;
+    }
+
+    async function loadHistory() {
+      const res = await fetch(`/api/groups/${groupId}/history`, {
+        headers: { "Authorization": "Bearer " + token }
+      });
+      if (!res.ok) return console.error("History fetch failed:", await res.text());
+      const msgs = await res.json();
+      msgs.forEach(m => renderMessage(m.sender, m.message));
+    }
+
+    socket.emit("joinGroup", groupId);
+    loadHistory();
+
+    document.getElementById("sendBtn").onclick = () => {
+      const text = document.getElementById("messageInput").value.trim();
+      if (!text) return;
+      const data = { groupId, senderId: currentUser.id, message: text };
+      socket.emit("sendGroupMessage", data);
+      document.getElementById("messageInput").value = "";
+    };
+
+    socket.on("receiveGroupMessage", data => {
+      renderMessage({ id: data.senderId, name: data.senderName || "Member" }, data.message);
+    });
+
+    socket.on("groupMemberLeft", (data) => {
+      if (data.userId !== currentUser.id) {
+        renderSystemMessage(`User ID ${data.userId} has left the group.`);
+      }
+    });
+
+    document.getElementById("leaveGroupBtn").onclick = async () => {
+      if (!confirm("Are you sure you want to leave this group? Your messages will be deleted.")) {
+        return;
+      }
+      try {
+        const res = await fetch(`/api/groups/${groupId}/leave`, {
+          method: "DELETE",
+          headers: {
+            "Authorization": "Bearer " + token
+          }
+        });
+        if (!res.ok) {
+          const errMsg = await res.text();
+          return alert("Leave failed: " + errMsg);
+        }
+        alert("You have left the group successfully.");
+        window.location.href = "contacts.html";
+      } catch (err) {
+        console.error("Error leaving group:", err);
+        alert("Error occurred while leaving group.");
+      }
+    };
+  </script>
+</body>
+</html>
+ -->
+ <!DOCTYPE html>
+ <html>
+ <head>
+   <meta charset="UTF-8" />
+   <title>Group Chat</title>
+   <style>
+     body {
+       font-family: Arial, sans-serif;
+       margin: 20px;
+     }
+     #chatContainer {
+       border: 1px solid #ddd;
+       padding: 10px;
+       max-width: 600px;
+       margin: 20px auto;
+       position: relative;
+     }
+     #controls {
+       display: flex;
+       justify-content: space-between;
+       margin-bottom: 10px;
+     }
+     #controls button {
+       padding: 6px 12px;
+       border: none;
+       border-radius: 4px;
+       cursor: pointer;
+       color: white;
+       font-size: 0.9em;
+     }
+     #addMemberBtn { background-color: #4CAF50; }
+     #removeMemberBtn { background-color: #f39c12; }
+     #promoteBtn { background-color: #007bff; }
+     #deleteGroupBtn { background-color: #e74c3c; }
+     #leaveGroupBtn { background-color: #9b59b6; }
+ 
+     #messages {
+       height: 300px;
+       overflow-y: auto;
+       border: 1px solid #ccc;
+       padding: 5px;
+       display: flex;
+       flex-direction: column;
+       margin-bottom: 10px;
+     }
+     .message {
+       margin: 5px;
+       padding: 8px;
+       border-radius: 5px;
+       max-width: 80%;
+       word-wrap: break-word;
+       position: relative;
+     }
+     .me { align-self: flex-end; background-color: #dcf8c6; text-align: right; }
+     .them { align-self: flex-start; background-color: #fff; text-align: left; }
+     .editBtn, .delBtn {
+       background: none;
+       border: none;
+       cursor: pointer;
+       font-size: 0.8em;
+       margin-left: 5px;
+     }
+     #inputArea {
+       display: flex;
+     }
+     #messageInput {
+       flex: 1;
+       padding: 8px;
+       font-size: 1em;
+     }
+     #sendBtn {
+       width: 60px;
+       padding: 8px;
+       margin-left: 5px;
+       cursor: pointer;
+     }
+   </style>
+ </head>
+ <body>
+   <h2 style="text-align:center;">Group Chat</h2>
+ 
+   <div id="chatContainer">
+     <div id="controls">
+       <div>
+         <button id="addMemberBtn">+ Add</button>
+         <button id="removeMemberBtn">− Remove</button>
+         <button id="promoteBtn">↑ Promote</button>
+       </div>
+       <div>
+         <button id="leaveGroupBtn">Leave</button>
+         <button id="deleteGroupBtn">Delete</button>
+       </div>
+     </div>
+ 
+     <div id="messages"></div>
+ 
+     <div id="inputArea">
+       <input id="messageInput" type="text" placeholder="Type your message…" />
+       <button id="sendBtn">Send</button>
+     </div>
+   </div>
+ 
+   <script src="/socket.io/socket.io.js"></script>
+   <script>
+     const socket      = io({ auth: { token: localStorage.getItem("authToken") } });
+     const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+     const params      = new URLSearchParams(window.location.search);
+     const groupId     = params.get("groupId");
+     const token       = localStorage.getItem("authToken");
+     const messagesDiv = document.getElementById("messages");
+ 
+     function renderMessage(msg) {
+       const div = document.createElement("div");
+       div.classList.add("message", msg.senderId === currentUser.id ? "me" : "them");
+       div.id = `gmsg-${msg.id}`;
+       const name = msg.senderId === currentUser.id ? "You" : msg.senderName;
+       let html = `<strong>${name}:</strong> ${msg.message}`;
+       if (msg.senderId === currentUser.id) {
+         html += `<button class="editBtn" data-id="${msg.id}">✎</button>`;
+         html += `<button class="delBtn"  data-id="${msg.id}">🗑️</button>`;
+       }
+       div.innerHTML = html;
+       messagesDiv.appendChild(div);
+       messagesDiv.scrollTop = messagesDiv.scrollHeight;
+     }
+ 
+     function renderSystemMessage(text) {
+       const div = document.createElement("div");
+       div.classList.add("message", "them");
+       div.innerHTML = `<em>${text}</em>`;
+       messagesDiv.appendChild(div);
+       messagesDiv.scrollTop = messagesDiv.scrollHeight;
+     }
+ 
+     async function loadHistory() {
+       const res = await fetch(`/api/groups/${groupId}/history`, {
+         headers: { "Authorization": "Bearer " + token }
+       });
+       if (!res.ok) return console.error("History fetch failed:", await res.text());
+       (await res.json()).forEach(m => renderMessage(m));
+     }
+ 
+     socket.emit("joinGroup", groupId);
+     loadHistory();
+ 
+     // --- MESSAGE SEND ---
+     document.getElementById("sendBtn").onclick = () => {
+       const text = document.getElementById("messageInput").value.trim();
+       if (!text) return;
+       socket.emit("sendGroupMessage", { groupId, senderId: currentUser.id, message: text });
+       document.getElementById("messageInput").value = "";
+     };
+ 
+     // --- ADD MEMBER ---
+     document.getElementById("addMemberBtn").onclick = async () => {
+       const newUserId = parseInt(prompt("Enter user ID to add:"), 10);
+       if (!newUserId) return;
+       const res = await fetch(`/api/groups/${groupId}/members`, {
+         method: "POST",
+         headers: {
+           "Content-Type": "application/json",
+           "Authorization": "Bearer " + token
+         },
+         body: JSON.stringify({ newUserId })
+       });
+       const data = await res.json();
+       if (!res.ok) return alert("Add failed: " + data.error);
+       renderSystemMessage(`Member added: ID ${data.userId}`);
+     };
+ 
+     // --- REMOVE MEMBER ---
+     document.getElementById("removeMemberBtn").onclick = async () => {
+       const targetUserId = parseInt(prompt("Enter user ID to remove:"), 10);
+       if (!targetUserId) return;
+       const res = await fetch(`/api/groups/${groupId}/members/${targetUserId}`, {
+         method: "DELETE",
+         headers: { "Authorization": "Bearer " + token }
+       });
+       const data = await res.json();
+       if (!res.ok) return alert("Remove failed: " + data.error);
+       renderSystemMessage(`Member removed: ID ${data.userId}`);
+     };
+ 
+     // --- PROMOTE TO ADMIN ---
+     document.getElementById("promoteBtn").onclick = async () => {
+       const targetUserId = parseInt(prompt("Enter user ID to promote:"), 10);
+       if (!targetUserId) return;
+       const res = await fetch(
+         `/api/groups/${groupId}/members/${targetUserId}/promote`,
+         {
+           method: "PATCH",
+           headers: { "Authorization": "Bearer " + token }
+         }
+       );
+       const data = await res.json();
+       if (!res.ok) return alert("Promote failed: " + data.error);
+       renderSystemMessage(`Promoted to admin: ID ${data.userId}`);
+     };
+ 
+     // --- LEAVE GROUP ---
+     document.getElementById("leaveGroupBtn").onclick = async () => {
+       if (!confirm("Leave and delete your messages?")) return;
+       const res = await fetch(`/api/groups/${groupId}/leave`, {
+         method: "DELETE",
+         headers: { "Authorization": "Bearer " + token }
+       });
+       if (!res.ok) return alert("Leave failed: " + await res.text());
+       window.location.href = "contacts.html";
+     };
+ 
+     // --- DELETE GROUP ---
+     document.getElementById("deleteGroupBtn").onclick = async () => {
+       if (!confirm("Delete entire group? This cannot be undone.")) return;
+       const res = await fetch(`/api/groups/${groupId}`, {
+         method: "DELETE",
+         headers: { "Authorization": "Bearer " + token }
+       });
+       if (!res.ok) return alert("Delete failed: " + await res.text());
+       window.location.href = "contacts.html";
+     };
+ 
+     // --- EDIT / DELETE MESSAGE HANDLERS ---
+     messagesDiv.addEventListener("click", async e => {
+       const id = e.target.dataset.id;
+       if (e.target.matches(".editBtn")) {
+         const newText = prompt("Edit your message:");
+         if (!newText) return;
+         await fetch(`/api/groups/messages/${id}`, {
+           method: "PATCH",
+           headers: {
+             "Content-Type": "application/json",
+             "Authorization": "Bearer " + token
+           },
+           body: JSON.stringify({ newText })
+         });
+       }
+       if (e.target.matches(".delBtn")) {
+         if (!confirm("Delete this message?")) return;
+         await fetch(`/api/groups/messages/${id}`, {
+           method: "DELETE",
+           headers: { "Authorization": "Bearer " + token }
+         });
+       }
+     });
+ 
+     // --- REAL-TIME SOCKET LISTENERS ---
+     socket.on("receiveGroupMessage", m => renderMessage(m));
+     socket.on("groupMemberLeft", d => {
+       if (d.userId !== currentUser.id) renderSystemMessage(`User ${d.userId} left`);
+     });
+     socket.on("groupMemberAdded", d =>
+       renderSystemMessage(`Member added: ID ${d.userId}`)
+     );
+     socket.on("groupMemberRemoved", d =>
+       renderSystemMessage(`Member removed: ID ${d.userId}`)
+     );
+     socket.on("groupMemberPromoted", d =>
+       renderSystemMessage(`Member promoted: ID ${d.userId}`)
+     );
+     socket.on("groupMessageEdited", ({ messageId, newText, senderName }) => {
+       const div = document.getElementById(`gmsg-${messageId}`);
+       if (!div) return;
+       const buttons = Array.from(div.querySelectorAll("button"))
+         .map(b => b.outerHTML)
+         .join("");
+       div.innerHTML = `<strong>${senderName}:</strong> ${newText} ${buttons}`;
+     });
+     socket.on("groupMessageDeleted", ({ messageId }) => {
+       const div = document.getElementById(`gmsg-${messageId}`);
+       if (div) div.remove();
+     });
+     socket.on("groupDeleted", ({ groupId: gid }) => {
+       if (gid === groupId) {
+         alert("This group has been deleted.");
+         window.location.href = "contacts.html";
+       }
+     });
+   </script>
+ </body>
+ </html>
+ 
+ 
+ 

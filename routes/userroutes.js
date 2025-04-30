@@ -1,0 +1,10 @@
+const express=require("express");
+const router=express.Router();
+const jwtmiddleware=require("../middleware/jwt");
+const upload= require("../middleware/multer");
+const{uploadProfilePic,deleteProfilePic,getusers} = require("../controllers/usercontrollers");
+console.log(uploadProfilePic);
+router.get("/api/users",jwtmiddleware,getusers);
+router.post("/api/user/profile-pic",jwtmiddleware,upload.single("profilePic"),uploadProfilePic);
+router.delete("/api/user/profile-pic",jwtmiddleware,deleteProfilePic);
+module.exports=router;

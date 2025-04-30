@@ -1,0 +1,267 @@
+<!-- <!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat</title>
+  <style>
+    #chatContainer {
+      border: 1px solid #ddd;
+      padding: 10px;
+      max-width: 600px;
+      margin: 20px auto;
+    }
+    #messages {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 5px;
+      display: flex;
+      flex-direction: column;
+    }
+    .message {
+      margin: 5px;
+      padding: 8px;
+      border-radius: 5px;
+      max-width: 60%;
+      word-wrap: break-word;
+    }
+    .me {
+      align-self: flex-end;
+      background-color: #dcf8c6;
+      text-align: right;
+    }
+    .them {
+      align-self: flex-start;
+      background-color: #fff;
+      text-align: left;
+    }
+    #messageInput {
+      width: calc(100% - 60px);
+      padding: 8px;
+    }
+    #sendBtn {
+      width: 50px;
+      padding: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center;">Chat Conversation</h2>
+  <div id="chatContainer">
+    <div id="messages"></div>
+    <div style="display:flex; margin-top:10px;">
+      <input id="messageInput" type="text" placeholder="Type your message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io({ auth: { token: localStorage.getItem("authToken") } });
+    const params = new URLSearchParams(window.location.search);
+    const conversationId = params.get("conversationId") || params.get("connectionId");
+    const currentUser = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const receiver    = JSON.parse(localStorage.getItem("receiver")    || "{}");
+    socket.emit("joinRoom", conversationId);
+
+    function renderMessage(senderId, text) {
+      const messagesDiv = document.getElementById("messages");
+      const div = document.createElement("div");
+      const isMe = senderId === currentUser.id;
+      div.classList.add("message", isMe ? "me" : "them");
+      const name = isMe
+        ? "You"
+        : (receiver.name || "Them");
+      div.innerHTML = `<strong>${name}:</strong> ${text}`;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+    async function loadChatHistory() {
+      const res = await fetch("/api/chathistory/" + conversationId, {
+        headers: { "Authorization": "Bearer " + localStorage.getItem("authToken") }
+      });
+      if (!res.ok) return console.error("History fetch failed:", await res.text());
+      const messages = await res.json();
+      document.getElementById("messages").innerHTML = "";
+      messages.forEach(m => renderMessage(m.senderId, m.message));
+    }
+    loadChatHistory();
+
+    document.getElementById("sendBtn").addEventListener("click", () => {
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
+      if (!text) return;
+      const data = {
+        conversationId,
+        senderId:   currentUser.id,
+        receiverId: receiver.id,
+        message:    text
+      };
+      socket.emit("sendMessage", data);
+      input.value = "";
+    });
+    socket.on("receiveMessage", (data) => {
+      renderMessage(data.senderId, data.message);
+    });
+  </script>
+</body>
+</html> -->
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Chat Conversation</title>
+  <style>
+    #chatContainer {
+      border: 1px solid #ddd;
+      padding: 10px;
+      max-width: 600px;
+      margin: 20px auto;
+    }
+    #messages {
+      height: 300px;
+      overflow-y: auto;
+      border: 1px solid #ccc;
+      padding: 5px;
+      display: flex;
+      flex-direction: column;
+    }
+    .message {
+      margin: 5px;
+      padding: 8px;
+      border-radius: 5px;
+      max-width: 60%;
+      position: relative;
+      word-wrap: break-word;
+    }
+    .me {
+      align-self: flex-end;
+      background-color: #dcf8c6;
+      text-align: right;
+    }
+    .them {
+      align-self: flex-start;
+      background-color: #fff;
+      text-align: left;
+    }
+    .editBtn, .delBtn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8em;
+      margin-left: 5px;
+    }
+    #messageInput {
+      width: calc(100% - 60px);
+      padding: 8px;
+    }
+    #sendBtn {
+      width: 50px;
+      padding: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h2 style="text-align:center;">Chat Conversation</h2>
+  <div id="chatContainer">
+    <div id="messages"></div>
+    <div style="display:flex; margin-top:10px;">
+      <input id="messageInput" type="text" placeholder="Type your message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io({ auth: { token: localStorage.getItem("authToken") } });
+    const params         = new URLSearchParams(window.location.search);
+    const conversationId = params.get("conversationId") || params.get("connectionId");
+    const currentUser    = JSON.parse(localStorage.getItem("currentUser") || "{}");
+    const receiver       = JSON.parse(localStorage.getItem("receiver")    || "{}");
+    const token          = localStorage.getItem("authToken");
+    const messagesDiv    = document.getElementById("messages");
+
+    socket.emit("joinRoom", conversationId);
+
+    function renderMessage(msg) {
+      const div = document.createElement("div");
+      div.classList.add("message", msg.senderId === currentUser.id ? "me" : "them");
+      div.id = `msg-${msg.id}`;
+      const senderName = msg.senderId === currentUser.id ? "You" : receiver.name || "Them";
+      let html = `<strong>${senderName}:</strong> ${msg.message}`;
+      if (msg.senderId === currentUser.id) {
+        html += `<button class="editBtn" data-id="${msg.id}">✎</button>`;
+        html += `<button class="delBtn"  data-id="${msg.id}">🗑️</button>`;
+      }
+      div.innerHTML = html;
+      messagesDiv.appendChild(div);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    async function loadChatHistory() {
+      const res = await fetch("/api/chathistory/" + conversationId, {
+        headers: { "Authorization": "Bearer " + token }
+      });
+      if (!res.ok) return console.error("History fetch failed:", await res.text());
+      const history = await res.json();
+      messagesDiv.innerHTML = "";
+      history.forEach(m => renderMessage(m));
+    }
+    loadChatHistory();
+
+    document.getElementById("sendBtn").addEventListener("click", () => {
+      const input = document.getElementById("messageInput");
+      const text = input.value.trim();
+      if (!text) return;
+      const data = {
+        conversationId,
+        senderId:   currentUser.id,
+        receiverId: receiver.id,
+        message:    text
+      };
+      socket.emit("sendMessage", data);
+      input.value = "";
+    });
+
+    // Handle edit/delete clicks
+    messagesDiv.addEventListener("click", async e => {
+      const id = e.target.dataset.id;
+      if (e.target.matches(".editBtn")) {
+        const newText = prompt("Edit your message:");
+        if (!newText) return;
+        await fetch(`/api/chats/${id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+          },
+          body: JSON.stringify({ newText })
+        });
+      }
+      if (e.target.matches(".delBtn")) {
+        if (!confirm("Delete this message?")) return;
+        await fetch(`/api/chats/${id}`, {
+          method: "DELETE",
+          headers: { "Authorization": "Bearer " + token }
+        });
+      }
+    });
+
+    // Real-time updates
+    socket.on("receiveMessage", data => {
+      renderMessage(data);
+    });
+    socket.on("messageEdited", ({ messageId, newText }) => {
+      const div = document.getElementById(`msg-${messageId}`);
+      if (!div) return;
+      const [header] = div.innerHTML.split("</strong>");
+      const buttons = div.innerHTML.slice(div.innerHTML.indexOf("</strong>") + 10);
+      div.innerHTML = header + `</strong> ${newText}` + buttons;
+    });
+    socket.on("messageDeleted", ({ messageId }) => {
+      const div = document.getElementById(`msg-${messageId}`);
+      if (div) div.remove();
+    });
+  </script>
+</body>
+</html>

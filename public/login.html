@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <title>Register / Login</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .container { max-width: 400px; margin: 0 auto; padding: 15px; border: 1px solid #ccc; }
+    h2 { text-align: center; }
+    label { display: block; margin: 8px 0 2px; }
+    input, button { width: 100%; padding: 8px; margin-bottom: 10px; }
+    .toggle-link { text-align: center; margin-top: 10px; }
+    .toggle-link a { cursor: pointer; color: blue; text-decoration: underline; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 id="formTitle">Register</h2>
+
+    
+    <form id="registerForm">
+      <label for="regName">Name</label>
+      <input type="text" id="regName" placeholder="Your Name" required />
+
+      <label for="regEmail">Email</label>
+      <input type="email" id="regEmail" placeholder="Your Email" required />
+
+      <label for="regPhone">Phone</label>
+      <input type="text" id="regPhone" placeholder="Your Phone" required />
+
+      <label for="regPassword">Password</label>
+      <input type="password" id="regPassword" placeholder="Password" required />
+
+      <button type="submit">Register</button>
+    </form>
+
+    
+    <form id="loginForm" class="hidden">
+      <label for="loginEmail">Email</label>
+      <input type="email" id="loginEmail" placeholder="Your Email" required />
+
+      <label for="loginPassword">Password</label>
+      <input type="password" id="loginPassword" placeholder="Password" required />
+
+      <button type="submit">Login</button>
+    </form>
+
+    <div class="toggle-link">
+      <span id="toggleText">Already have an account?</span>
+      <a id="toggleLink">Login here</a>
+    </div>
+  </div>
+
+  <script>
+    const registerForm = document.getElementById("registerForm");
+    const loginForm    = document.getElementById("loginForm");
+    const formTitle    = document.getElementById("formTitle");
+    const toggleText   = document.getElementById("toggleText");
+    const toggleLink   = document.getElementById("toggleLink");
+
+    
+    toggleLink.addEventListener("click", () => {
+      const showingRegister = !registerForm.classList.contains("hidden");
+      if (showingRegister) {
+        registerForm.classList.add("hidden");
+        loginForm.classList.remove("hidden");
+        formTitle.textContent = "Login";
+        toggleText.textContent = "Don't have an account?";
+        toggleLink.textContent = "Register here";
+      } else {
+        loginForm.classList.add("hidden");
+        registerForm.classList.remove("hidden");
+        formTitle.textContent = "Register";
+        toggleText.textContent = "Already have an account?";
+        toggleLink.textContent = "Login here";
+      }
+    });
+
+    function handleSuccess(token, userId, role) {
+      localStorage.setItem("authToken", token);
+      localStorage.setItem("currentUser", JSON.stringify({ id: userId, role }));
+      window.location.href = "contacts.html";
+    }
+
+    registerForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const name     = document.getElementById("regName").value.trim();
+      const email    = document.getElementById("regEmail").value.trim();
+      const phone    = document.getElementById("regPhone").value.trim();
+      const password = document.getElementById("regPassword").value.trim();
+
+      try {
+        const res = await fetch("/api/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name, email, phone, password, role: "user" })
+        });
+        const data = await res.json();
+
+        if (data.id) {
+          const loginRes = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+          });
+          const loginData = await loginRes.json();
+          if (loginData.token) {
+            handleSuccess(loginData.token, loginData.id, loginData.role);
+          } else {
+            alert("Registered, but auto-login failed. Please login manually.");
+          }
+        } else {
+          alert(data.status || data.error);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Registration error. See console.");
+      }
+    });
+
+    loginForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email    = document.getElementById("loginEmail").value.trim();
+      const password = document.getElementById("loginPassword").value.trim();
+
+      try {
+        const res = await fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password })
+        });
+        const data = await res.json();
+
+        if (data.token) {
+          handleSuccess(data.token, data.id, data.role);
+        } else {
+          alert(data.status || data.error);
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Login error. See console.");
+      }
+    });
+  </script>
+</body>
+</html>
+
+
