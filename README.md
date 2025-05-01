@@ -95,5 +95,5 @@ This project is licensed under the MIT License. See [LICENSE](LICENSE) for detai
 
 - **Author**: Sachit
 - **GitHub**: [@sachit03](https://github.com/sachit03)
-- **Email**: sachit@example.com
+- **Email**: rajimang@gmail.com
 
