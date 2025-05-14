@@ -62,7 +62,7 @@ An interactive, real-time chat application built with **Node.js**, **Express**, 
 ├── routes/           # Express routes
 ├── sockets/          # Socket.io event logic
 ├── middleware/       # Auth & error-handling
-└── app.js            # Entry point
+└── index.js            # Entry point
 ```
 
 ---
